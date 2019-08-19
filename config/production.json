@@ -1,0 +1,15 @@
+{
+  "environment": "production",
+  "version": "0.0.1",
+  "buildDate": "NOW",
+  "buildSHA": "4-8-15-16-23-42",
+  "name": "eco-os-license-service",
+  "serviceId": "008",
+  "server": {
+    "port": "8016"
+  },
+  "mongo": {
+    "db": "secondlock",
+    "collection": "license"
+  }
+}
