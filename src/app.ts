@@ -64,59 +64,51 @@ export class Bootstrapper {
     this.bootstrapper.loadGobalErrorHandler(process);
   }
 
-  public init(): Promise<Application> {
-    return new Promise((resolve, reject) => {
-      Promise.all([this.initLogSystem(), this.bootstrapper.signInServiceRegistry(), this.validateLicenseCertificate(), this.initLicenseLoop()])
-        .then(() => {
-          resolve(this.api.init());
-        })
-        .catch((err) => {
-          Log.log(err, LogLevel.error);
-          reject(err);
-        });
-    });
+  public async init(): Promise<Application> {
+    try {
+      this.initLogSystem();
+      await this.validateLicenseCertificate();
+      await this.initLicenseLoop();
+      await this.bootstrapper.signInServiceRegistry();
+      return await this.api.init();
+    } catch (err) {
+      Log.log(err, LogLevel.error);
+      process.exit(1);
+      throw new Error(err);
+    }
   }
 
-  private initLogSystem(): Promise<void> {
-    return new Promise((resolve, reject) => {
+  private initLogSystem(): void {
+    Log.log(`init ${Config.get("name")} ${Config.get("version")}`, LogLevel.info);
+    return;
+  }
+
+  private async validateLicenseCertificate(): Promise<void> {
+    const certManager: ICertManager = licenseContainer.get<ICertManager>(LICENSE_MS_TYPES.ICertManager);
+    const hasCert = await certManager.checkIfCertificateAlreadyExists();
+    if (!hasCert) {
       try {
-        resolve(Log.log(`init ${Config.get("name")} ${Config.get("version")}`, LogLevel.info));
+        await certManager.createLicenseKeyPair();
+        return;
       } catch (err) {
         Log.log(err, LogLevel.error);
-        reject(err);
+        process.exit(1);
       }
-    });
+    }
+    return;
   }
 
-  private validateLicenseCertificate(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        const certManager: ICertManager = licenseContainer.get<ICertManager>(LICENSE_MS_TYPES.ICertManager);
-        certManager.checkIfCertificateAlreadyExists().then((result) => {
-          if (!result) {
-            certManager.createLicenseKeyPair().then((r) => {
-              resolve();
-            });
-          } else {
-            resolve();
-          }
-        });
-      } catch (err) {
-        Log.log(err, LogLevel.error);
-        reject(err);
-      }
-    });
-  }
-
-  private initLicenseLoop(): Promise<void> {
-    return new Promise(async (resolve, reject) => {
+  private async initLicenseLoop(): Promise<void> {
+    try {
       const redisConfig = await this.bootstrapper.exposeRedisConfig();
-      await redisContainer.bind(REDIS_TYPES.REDIS_HOST).toConstantValue(redisConfig.split(":")[0]);
-      await redisContainer.bind(REDIS_TYPES.REDIS_PORT).toConstantValue(redisConfig.split(":")[1]);
-
+      redisContainer.bind(REDIS_TYPES.REDIS_HOST).toConstantValue(redisConfig.split(":")[0]);
+      redisContainer.bind(REDIS_TYPES.REDIS_PORT).toConstantValue(redisConfig.split(":")[1]);
       const licenseLoop: ILicenseCycle = licenseCycleContainer.get<ILicenseCycle>(LICENSECYCLE_TYPES.ILicenseCycle);
       licenseLoop.init();
-      resolve();
-    });
+      return;
+    } catch (err) {
+      Log.log(err, LogLevel.error);
+      process.exit(1);
+    }
   }
 }

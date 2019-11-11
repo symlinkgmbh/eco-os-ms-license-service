@@ -22,6 +22,7 @@ import { PkStroageLicense, MsLicense } from "@symlinkde/eco-os-pk-models";
 import { ICertManager } from "./ICertManager";
 import * as forge from "node-forge";
 import { injectable } from "inversify";
+import { Log, LogLevel } from "@symlinkde/eco-os-pk-log";
 
 @injectKeyService
 @injectable()
@@ -29,17 +30,28 @@ export class CertManager implements ICertManager {
   public keyService!: PkStroageLicense.IKeyService;
 
   public async checkIfCertificateAlreadyExists(): Promise<boolean> {
-    const result = await this.keyService.loadKeys();
-    if (result === null) {
+    try {
+      const result = await this.keyService.loadKeys();
+      if (result === null) {
+        return false;
+      }
+      return true;
+    } catch (err) {
+      Log.log(err, LogLevel.error);
+      process.exit(1);
       return false;
     }
-
-    return true;
   }
 
   public async createLicenseKeyPair(): Promise<void> {
-    const keys = this.createKeyPair();
-    await this.keyService.addKeys(keys);
+    try {
+      const keys = this.createKeyPair();
+      await this.keyService.addKeys(keys);
+      return;
+    } catch (err) {
+      Log.log(err, LogLevel.error);
+      process.exit(1);
+    }
   }
 
   public async loadKeyPair(): Promise<MsLicense.ILicenseKeyPair | null> {

@@ -35,7 +35,18 @@ export class LicenseController {
   private licenseLoop: ILicenseCycle = licenseCycleContainer.get<ILicenseCycle>(LICENSECYCLE_TYPES.ILicenseCycle);
 
   public async loadPublicKey(): Promise<string | null> {
-    return await this.certManager.loadPublicKeyPem();
+    const result = await this.certManager.loadPublicKeyPem();
+    if (result === null) {
+      throw new CustomRestError(
+        {
+          code: 400,
+          message: "unable to load public key",
+        },
+        400,
+      );
+    }
+
+    return result;
   }
 
   public async addLicense(req: Request): Promise<MsLicense.IEncryptedLicense> {
